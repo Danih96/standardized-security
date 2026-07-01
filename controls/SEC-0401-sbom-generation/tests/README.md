@@ -70,8 +70,14 @@ cat sbom.cdx.json | jq '.metadata.timestamp'
 
 # Top-level component (the image being inventoried)
 cat sbom.cdx.json | jq '.metadata.component.name'
-cat sbom.cdx.json | jq '.metadata.component.version'
-# Expected: the image name and digest
+# Expected: the image reference (repo:tag)
+
+cat sbom.cdx.json | jq '.metadata.component.purl'
+# Expected: a pkg:oci/... purl containing the image digest (sha256:...)
+# Trivy models the top-level component as type "container" and stores
+# the digest in .purl (and in the "aquasecurity:trivy:RepoDigest"
+# property), not in .version — .version is null for this component
+# type, which is expected, not a misconfiguration.
 
 # Components present
 cat sbom.cdx.json | jq '.components | length'
@@ -84,7 +90,8 @@ cat sbom.cdx.json | jq '.components | length'
 |---|---|
 | Artifact not produced | Upload step is missing `if: always()` or SBOM file path does not match |
 | `.components` is empty | Image has no detectable packages — verify the image has OS packages or app manifests |
-| `.metadata.component.version` is a tag, not a digest | Pass the image reference with digest for accurate evidence |
+| `.metadata.component.version` is `null` | Expected for `type: "container"` components — Trivy stores the digest in `.purl`, not `.version` |
+| `.metadata.component.purl` has no `sha256:` digest | Image was referenced by tag only and could not be resolved to a digest — verify the registry push succeeded before scanning |
 
 ---
 
