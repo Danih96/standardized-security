@@ -77,24 +77,45 @@ clean SARIF artifact.
 **Purpose:** confirm that an image built from a base image
 with known HIGH or CRITICAL CVEs produces a failing workflow run.
 
-### Test base image
+### Test image
 
 ```dockerfile
-FROM ubuntu:18.04
+FROM node:20-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 ```
 
-Ubuntu 18.04 reached end of life in April 2023. It contains
-numerous unpatched HIGH and CRITICAL CVEs across OS packages
-including OpenSSL, curl, and glibc. It will not receive further
-security updates and will reliably produce findings for the
-foreseeable future.
+`package.json` pins `lodash` to `4.17.20`, which contains
+`CVE-2021-23337` (command injection, CVSS 7.2 HIGH) — the same
+dependency and CVE used to validate SEC-0201 (dependency-scanning).
 
-This is an intentionally vulnerable base image used only for
+**Why not an EOL OS base image (e.g. `ubuntu:18.04`):** this
+scenario previously used `ubuntu:18.04` for its unpatched OS CVEs.
+That approach decays over time — once a distribution goes far
+enough past end of life, the vendor stops publishing new OVAL/USN
+data for it, and Trivy can no longer confirm vulnerability status
+for its packages at all (`WARN This OS version is no longer
+supported by the distribution`), producing zero findings instead
+of the expected failure. A pinned application-level dependency
+with a permanent GHSA/OSV advisory does not have this problem —
+`CVE-2021-23337` will not disappear from the vulnerability database
+as `lodash 4.17.20` ages.
+
+This also validates something an OS-CVE-only scenario would not:
+that `container-scanning` catches vulnerable application
+dependencies baked into the image (`node_modules`), not just OS
+packages — defense in depth alongside `dependency-scanning`, which
+only sees the source repository, not what actually ships in the
+image.
+
+This is an intentionally vulnerable dependency used only for
 validation purposes. It must never be used in a production image.
 
 ### Setup
 
-1. Create the Dockerfile above and build the image:
+1. Create the Dockerfile and `package.json`/`package-lock.json`
+   above (matching the SEC-0201 test fixture), then build the image:
 
    ```
    docker build -t ghcr.io/<org>/<repo>:test-vulnerable .
@@ -117,8 +138,8 @@ validation purposes. It must never be used in a production image.
 
 - The `container-scanning` job fails.
 - A workflow artifact named `container-scanning-results` is produced.
-- The SARIF file contains multiple findings at HIGH or CRITICAL
-  severity, referencing Ubuntu 18.04 OS packages.
+- The SARIF file contains at least one finding referencing
+  `lodash` and `CVE-2021-23337` at HIGH severity.
 
 ### How to verify
 
@@ -126,22 +147,21 @@ validation purposes. It must never be used in a production image.
   a red cross.
 - The failing step is the Trivy scan step.
 - Download the `container-scanning-results` artifact. Under
-  `runs[].results`, multiple results reference OS packages
-  (curl, libssl, libc-bin, or similar) at HIGH or CRITICAL severity.
-- Findings should reference Ubuntu Security Notices (USN) as
-  the advisory source — confirming that OS-specific databases
-  are being consulted, not only OSV or GHSA.
+  `runs[].results`, at least one result must reference `lodash`
+  with rule ID matching `CVE-2021-23337`.
 
 ### Cleanup
 
-After validation, delete the test image from the registry.
-Do not use `ubuntu:18.04` as a base in any non-test image.
+After validation, delete the test image from the registry and
+update `lodash` to `4.17.21` or later.
+Do not use `lodash 4.17.20` in any non-test image.
 
 ### Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| Job passes despite ubuntu:18.04 | Severity threshold is set above HIGH — verify input values |
-| Findings reported but source is OSV/GHSA only | Ubuntu SecDB may not be loading — check Trivy database initialization in the workflow logs |
+| Job passes despite `lodash@4.17.20` | Severity threshold is set above HIGH — verify input values |
+| Job passes despite `lodash@4.17.20` | `package-lock.json` was not copied into the image before `npm ci` — Trivy only sees what's actually in the image filesystem |
+| Different CVE reported than expected | Trivy may report additional CVEs in the same version — this is expected and correct |
 | Trivy cannot pull the image | Registry authentication issue — verify GITHUB_TOKEN has `packages: read` permission |
 | No artifact produced | Upload step is missing `if: always()` — verify the workflow definition |
