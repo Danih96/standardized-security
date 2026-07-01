@@ -1,0 +1,44 @@
+name: SBOM Generation
+
+on:
+  workflow_call:
+    inputs:
+      image-ref:
+        description: >
+          Container image reference from which to generate the SBOM.
+          The image must be accessible from the runner — push to a
+          registry before calling this workflow.
+          Pass the same reference used for container-scanning.yml
+          to ensure the SBOM matches the scanned image.
+          Example: ghcr.io/org/myapp:sha-a1b2c3d
+        type: string
+        required: true
+
+jobs:
+  sbom-generation:
+    name: SBOM Generation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM
+        id: trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ inputs.image-ref }}
+          format: cyclonedx
+          output: sbom.cdx.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-results
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30

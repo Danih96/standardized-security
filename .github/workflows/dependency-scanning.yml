@@ -1,0 +1,50 @@
+name: Dependency Scanning
+
+on:
+  workflow_call:
+    inputs:
+      fail-on-findings:
+        description: >
+          Fail the workflow when vulnerable dependencies are detected
+          at or above the configured severity threshold.
+          Set to false only during initial rollout, for a fixed and
+          publicly communicated period. Never set to false permanently.
+        type: boolean
+        default: true
+      severity-threshold:
+        description: >
+          Comma-separated severity levels that trigger a failure.
+          Valid values: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN.
+          Lowering the threshold increases noise. Raising it above
+          HIGH allows known exploitable vulnerabilities to pass.
+        type: string
+        default: "CRITICAL,HIGH"
+
+jobs:
+  dependency-scanning:
+    name: Dependency Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan dependencies for vulnerabilities
+        id: trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: ${{ inputs.severity-threshold }}
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: ${{ inputs.fail-on-findings && '1' || '0' }}
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-scanning-results
+          path: trivy-results.sarif
+          if-no-files-found: warn
+          retention-days: 7

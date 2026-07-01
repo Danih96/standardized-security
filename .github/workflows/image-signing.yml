@@ -1,0 +1,51 @@
+name: Image Signing
+
+on:
+  workflow_call:
+    inputs:
+      image-ref:
+        description: >
+          Digest-pinned image reference to sign.
+          Must use digest, not tag: ghcr.io/org/myapp@sha256:abc123
+          Tags are mutable and must not be used as the signing target.
+        type: string
+        required: true
+      sbom-path:
+        description: >
+          Path to the CycloneDX SBOM file to attest alongside the image.
+          Produced by sbom-generation.yml (SEC-0401).
+          When provided, the SBOM is attached to the image in the registry
+          as an OCI attestation. When omitted, only the image is signed.
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  id-token: write   # required for Cosign OIDC token request
+  packages: write   # required to push signature artifact to registry
+
+jobs:
+  image-signing:
+    name: Image Signing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image
+        run: |
+          cosign sign --yes ${{ inputs.image-ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest SBOM
+        if: inputs.sbom-path != ''
+        run: |
+          cosign attest \
+            --yes \
+            --predicate ${{ inputs.sbom-path }} \
+            --type cyclonedx \
+            ${{ inputs.image-ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

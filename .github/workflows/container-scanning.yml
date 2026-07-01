@@ -1,0 +1,61 @@
+name: Container Image Scanning
+
+on:
+  workflow_call:
+    inputs:
+      image-ref:
+        description: >
+          Container image reference to scan. The image must be
+          accessible from the runner — push to a registry before
+          calling this workflow.
+          Example: ghcr.io/org/myapp:sha-a1b2c3d
+        type: string
+        required: true
+      fail-on-findings:
+        description: >
+          Fail the workflow when vulnerable packages are detected
+          at or above the configured severity threshold.
+          Set to false only during initial rollout, for a fixed and
+          publicly communicated period. Never set to false permanently.
+        type: boolean
+        default: true
+      severity-threshold:
+        description: >
+          Comma-separated severity levels that trigger a failure.
+          Valid values: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN.
+          Raising above HIGH allows known exploitable OS-level
+          vulnerabilities to pass undetected.
+        type: string
+        default: "CRITICAL,HIGH"
+
+jobs:
+  container-scanning:
+    name: Container Image Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan container image for vulnerabilities
+        id: trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ inputs.image-ref }}
+          scanners: vuln
+          severity: ${{ inputs.severity-threshold }}
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: ${{ inputs.fail-on-findings && '1' || '0' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-scanning-results
+          path: trivy-results.sarif
+          if-no-files-found: warn
+          retention-days: 7
