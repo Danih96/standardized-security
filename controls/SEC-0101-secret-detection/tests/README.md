@@ -64,21 +64,28 @@ at least one finding.
 ### Test value
 
 ```
-AKIAIOSFODNN7EXAMPLE
+AKIAABCDEFGHIJKLMNOP
 ```
 
 This is an intentionally fake AWS access key used only for
 validation purposes. It matches the AWS access key pattern
-(`AKIA[A-Z0-9]{16}`) and is listed in AWS documentation as a
-non-functional example value. It does not grant access to any
-AWS account.
+(`AKIA[A-Z0-9]{16}`) and does not grant access to any AWS account.
+
+Do not use the well-known AWS documentation placeholder
+`AKIAIOSFODNN7EXAMPLE` for this test: Gitleaks' default
+`aws-access-token` rule ships with a built-in allowlist regex
+(`.+EXAMPLE$`) that deliberately ignores any value ending in
+`EXAMPLE`, since that exact string appears throughout public
+AWS docs and would otherwise cause constant false positives.
+Using it here will make the job pass even though a "secret"
+is present.
 
 ### Setup
 
 1. In the test repository, commit a file containing the test value:
 
 ```
-echo "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE" > test-secret.txt
+echo "AWS_ACCESS_KEY_ID=AKIAABCDEFGHIJKLMNOP" > test-secret.txt
 git add test-secret.txt
 git commit -m "test: add fake AWS key to validate secret detection"
 ```
@@ -117,4 +124,5 @@ git commit -m "test: remove fake AWS key after validation"
 |---|---|
 | Job passes despite the fake key | `fetch-depth` is not `0` — Gitleaks is scanning less history than expected |
 | Job passes despite the fake key | The test value was modified and no longer matches the AWS rule pattern |
+| Job passes despite the fake key | The test value ends in `EXAMPLE` — Gitleaks' default allowlist (`.+EXAMPLE$` on the `aws-access-token` rule) ignores it |
 | Artifact not produced | The upload step requires `if: always()` — verify the workflow definition |

@@ -159,7 +159,7 @@ Exceptions are declared in the `[allowlist]` section of
 description = "Fake AWS key used in unit test fixture — not a real credential"
 
 # Regex matching the specific finding being suppressed
-regex       = '''AKIAIOSFODNN7EXAMPLE'''
+regex       = '''AKIAABCDEFGHIJKLMNOP'''
 
 # Owner of this exception — team or individual responsible for review
 # owner = "security-team"          # add as a comment field
@@ -191,7 +191,7 @@ paths = ["tests/fixtures/"]
 # This suppresses one specific finding
 [[allowlist.commits]]
 description = "Fake key in test fixture — see issue #42"
-regex       = '''AKIAIOSFODNN7EXAMPLE'''
+regex       = '''AKIAABCDEFGHIJKLMNOP'''
 ```
 
 File-level and directory-level suppression are not permitted because
@@ -243,7 +243,7 @@ scenarios must pass. Full procedures are in
 | Scenario | Expected result |
 |---|---|
 | Repository with no secrets | Workflow passes, SARIF artifact produced with zero findings |
-| Repository with `AKIAIOSFODNN7EXAMPLE` in a committed file | Workflow fails, finding reported in SARIF artifact |
+| Repository with `AKIAABCDEFGHIJKLMNOP` in a committed file | Workflow fails, finding reported in SARIF artifact |
 
 ---
 
