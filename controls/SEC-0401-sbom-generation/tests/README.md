@@ -142,7 +142,9 @@ was inspected, not just that a SBOM file was produced.
 
 ```bash
 # Check lodash appears with correct purl and version
-cat sbom.cdx.json | jq '.components[] | select(.purl | contains("pkg:npm/lodash"))'
+# (guard against null .purl on some components, or jq errors instead
+# of just returning false)
+cat sbom.cdx.json | jq '.components[] | select(.purl != null and (.purl | contains("pkg:npm/lodash")))'
 ```
 
 Expected output includes:
@@ -160,7 +162,7 @@ npm package — confirming that both application and OS layers
 were inspected:
 
 ```bash
-cat sbom.cdx.json | jq '[.components[] | select(.purl | startswith("pkg:apk"))] | length'
+cat sbom.cdx.json | jq '[.components[] | select(.purl != null and (.purl | startswith("pkg:apk")))] | length'
 # Expected: a number greater than zero
 ```
 
@@ -172,3 +174,4 @@ cat sbom.cdx.json | jq '[.components[] | select(.purl | startswith("pkg:apk"))] 
 | `lodash` found but purl is wrong | Verify the package type prefix: npm packages use `pkg:npm/`, not `pkg:pypi/` or others |
 | No Alpine packages in SBOM | Trivy may be scanning filesystem only — verify `scan-type: image` in the workflow |
 | Version is `4.17.20` instead of `4.17.21` | Lock file from a previous install — run `npm install` again and commit the updated lock file |
+| `jq` errors with "cannot have their containment checked" | Some components have `.purl: null` — use the `.purl != null and (...)` guard shown above, not a bare `contains()`/`startswith()` |
