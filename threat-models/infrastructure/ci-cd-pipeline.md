@@ -388,3 +388,70 @@ risk but does not enforce mitigation.
 Threats with no planned control represent accepted residual risk
 for the current milestone range. They must be reviewed when
 the roadmap is updated. Acceptance is not permanent.
+
+---
+
+## 6. DREAD Risk Scoring
+
+STRIDE and the threat catalog above answer "what could go wrong."
+DREAD answers "which of these matters most" — a 1-10 score across
+five axes (Damage, Reproducibility, Exploitability, Affected users,
+Discoverability), averaged into a single number per threat.
+
+### Methodology
+
+Each score below is the **inherent severity of the threat**, assuming
+no mitigating control exists — not the residual risk today. This
+keeps mitigated and unmitigated threats on the same scale, so a threat
+that is already well-controlled (e.g. T-CICD-001) can still be
+compared honestly against one with no control at all (e.g. T-CICD-010).
+Whether the risk is actually reduced today is a separate question,
+answered by the "Status" column and Section 5 above.
+
+| Threat ID | Name | D | R | E | A | Di | Score | Status today |
+|---|---|---|---|---|---|---|---|---|
+| T-CICD-001 | Secret committed to source code | 8 | 9 | 8 | 6 | 9 | **8.0** | Mitigated (M1) |
+| T-CICD-006 | Vulnerable base image in container build | 7 | 9 | 6 | 7 | 8 | **7.4** | Mitigated (M3) |
+| T-CICD-002 | Dependency with known CVE introduced pre-merge | 7 | 8 | 6 | 7 | 7 | **7.0** | Mitigated (M2) |
+| T-CICD-008 | Excessive CI token permissions | 8 | 9 | 5 | 7 | 6 | **7.0** | No planned control |
+| T-CICD-010 | Reusable workflow pinned to mutable reference | 10 | 10 | 3 | 10 | 2 | **7.0** | No planned control |
+| T-CICD-004 | Compromised CI runner exfiltrates secrets | 9 | 6 | 5 | 10 | 3 | **6.6** | Partial |
+| T-CICD-007 | Workflow injection via untrusted input | 8 | 7 | 6 | 8 | 4 | **6.6** | No planned control |
+| T-CICD-003 | Malicious package via dependency confusion | 9 | 5 | 5 | 8 | 4 | **6.2** | No planned control |
+| T-CICD-005 | Unsigned or tampered container image deployed | 9 | 6 | 4 | 9 | 3 | **6.2** | Mitigated (M5) |
+| T-CICD-009 | Artifact tampering between build and deployment | 9 | 6 | 4 | 9 | 3 | **6.2** | Partial (M5) |
+
+### Next priority, by score, among threats with no planned control
+
+1. **T-CICD-010** (7.0) — reusable workflow pinned to `@main`. Highest
+   reproducibility and blast radius of any unmitigated threat: a single
+   compromised commit on the platform propagates to every consumer
+   repository on their next run, with no action required by the attacker
+   beyond the initial compromise.
+2. **T-CICD-008** (7.0) — excessive `GITHUB_TOKEN` permissions. Close
+   second; unlike T-CICD-010 it requires an attacker to already have
+   some code execution on the runner, but it is trivial to fix
+   (explicit `permissions:` blocks) relative to its severity.
+3. **T-CICD-007 / T-CICD-003** (6.6 / 6.2) — workflow injection and
+   dependency confusion, both requiring more attacker setup than the
+   two above.
+
+### Limitations of DREAD
+
+- **Subjective inputs.** Two reviewers can reasonably assign different
+  scores to the same threat; there is no ground truth like a CVSS
+  vector string. Scores here should be read as this platform's
+  judgment call, not an objective measurement.
+- **Averaging hides outliers.** A threat with catastrophic Damage (10)
+  but low scores elsewhere can end up ranked below a threat that is
+  moderately bad across all five axes. T-CICD-004 and T-CICD-005 both
+  illustrate this: very high Damage and Affected-users scores are
+  pulled down by low Discoverability.
+- **No shared calibration across organizations.** Unlike CVSS, there is
+  no public reference corpus of "what a 7 looks like," which is why
+  Microsoft — DREAD's original author — deprecated it internally in
+  favor of a simpler bucketed severity scale.
+- **Practical use here:** DREAD is used as a lightweight prioritization
+  aid on top of the STRIDE-style threat catalog above, not as a
+  standalone methodology. It answers "what do we fix next," not "have
+  we found everything."
