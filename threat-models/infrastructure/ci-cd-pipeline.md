@@ -223,7 +223,7 @@ tampering. Discovery may occur only after significant damage.
 Build artifacts
 
 **Mitigating control:**
-SEC-0401 — Image Signing and Verification (Milestone 5, planned)
+SEC-0402 — Image Signing and Verification (Milestone 5, active)
 
 ---
 
@@ -331,9 +331,10 @@ system does not verify the signature.
 Build artifacts
 
 **Mitigating control:**
-SEC-0401 — Image Signing and Verification (Milestone 5, planned).
-Full mitigation requires both signing at build time and digest-based
-verification at deploy time.
+SEC-0402 — Image Signing and Verification (Milestone 5, active for
+signing at build time). Full mitigation requires both signing at
+build time and digest-based verification at deploy time; the
+verification half runs in `standardized-deployment`, not here.
 
 ---
 
@@ -375,10 +376,10 @@ risk but does not enforce mitigation.
 | Threat ID | Name | Mitigated by |
 |---|---|---|
 | T-CICD-001 | Secret committed to source code | Milestone 1 — SEC-0101 (active) |
-| T-CICD-002 | Dependency with known CVE | Milestone 2 — SEC-0201 (planned) |
-| T-CICD-006 | Vulnerable base image | Milestone 3 — SEC-0301 (planned) |
-| T-CICD-005 | Unsigned container image deployed | Milestone 5 — SEC-0401 (planned) |
-| T-CICD-009 | Artifact tampering between build and deploy | Milestone 5 — SEC-0401 (planned) |
+| T-CICD-002 | Dependency with known CVE | Milestone 2 — SEC-0201 (active) |
+| T-CICD-006 | Vulnerable base image | Milestone 3 — SEC-0301 (active) |
+| T-CICD-005 | Unsigned container image deployed | Milestone 5 — SEC-0402 (active) |
+| T-CICD-009 | Artifact tampering between build and deploy | Milestone 5 — SEC-0402 (active, partial — deploy-side verification not yet wired in) |
 | T-CICD-003 | Dependency confusion | No planned control |
 | T-CICD-004 | CI runner secret exfiltration | No planned control |
 | T-CICD-007 | Workflow injection | No planned control |
