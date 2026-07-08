@@ -1,0 +1,52 @@
+name: Policy as Code
+
+on:
+  workflow_call:
+    inputs:
+      policies-ref:
+        description: >
+          Git ref of standardized-security to load the Rego policies from.
+          Should match the version of this workflow the consumer pins,
+          so files are evaluated against the intended policy version.
+        type: string
+        required: false
+        default: "main"
+      conftest-version:
+        description: >
+          Conftest version to install for policy evaluation.
+        type: string
+        required: false
+        default: "0.68.2"
+
+permissions:
+  contents: read   # both checkouts only need read access
+
+jobs:
+  policy-as-code:
+    name: Policy as Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consumer repository
+        uses: actions/checkout@v4
+
+      - name: Checkout platform policies
+        uses: actions/checkout@v4
+        with:
+          repository: Danih96/standardized-security
+          ref: ${{ inputs.policies-ref }}
+          path: _policy-platform
+
+      - name: Install Conftest
+        run: |
+          VERSION="${{ inputs.conftest-version }}"
+          curl -sSfL \
+            "https://github.com/open-policy-agent/conftest/releases/download/v${VERSION}/conftest_${VERSION}_Linux_x86_64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin conftest
+          conftest --version
+
+      - name: Evaluate workflow policies
+        run: |
+          conftest test \
+            --policy _policy-platform/controls/SEC-0501-policy-as-code/policies \
+            --namespace workflows \
+            .github/workflows/*.yml

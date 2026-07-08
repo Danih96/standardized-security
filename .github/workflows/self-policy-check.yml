@@ -1,0 +1,18 @@
+name: Self Policy Check
+
+# Dogfooding: the platform evaluates its own workflow files against the
+# Policy as Code (SEC-0501) rules it ships. All platform workflows are
+# expected to pass; a failure here means the platform violates its own policy.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    uses: ./.github/workflows/policy-as-code.yml
